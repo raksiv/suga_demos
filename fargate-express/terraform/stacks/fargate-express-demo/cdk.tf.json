@@ -1,0 +1,322 @@
+{
+  "//": {
+    "metadata": {
+      "backend": "nil_backend",
+      "stackName": "fargate-express-demo",
+      "version": "0.20.12"
+    },
+    "outputs": {
+    }
+  },
+  "module": {
+    "app": {
+      "//": {
+        "metadata": {
+          "path": "fargate-express-demo/app",
+          "uniqueId": "app"
+        }
+      },
+      "alb_arn": "${module.aws_lb.arn}",
+      "alb_security_group": "${module.aws_vpc.default_security_group_id}",
+      "container_port": "${var.container_port}",
+      "depends_on": [
+        "module.aws_lb",
+        "module.aws_vpc"
+      ],
+      "security_groups": [
+        "${module.aws_vpc.default_security_group_id}"
+      ],
+      "source": "github.com/raksiv/plugins-aws//fargate/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c",
+      "subnets": "${module.aws_vpc.private_subnets}",
+      "suga": {
+        "env": "${merge(try(module.static_assets.suga.exports.services.app.env, {}), try(module.db.suga.exports.services.app.env, {}), {})}",
+        "identities": {
+          "aws:iam:role": "${module.app_iam-role_role.suga}"
+        },
+        "image_id": "${module.app_image.image_id}",
+        "name": "app",
+        "schedules": {
+        },
+        "stack_id": "${random_string.stack_id.result}"
+      },
+      "vpc_id": "${module.aws_vpc.vpc_id}"
+    },
+    "app_iam-role_role": {
+      "//": {
+        "metadata": {
+          "path": "fargate-express-demo/app_iam-role_role",
+          "uniqueId": "app_iam-role_role"
+        }
+      },
+      "source": "github.com/raksiv/plugins-aws//iamrole/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c",
+      "suga": {
+        "name": "app",
+        "stack_id": "${random_string.stack_id.result}"
+      }
+    },
+    "app_image": {
+      "//": {
+        "metadata": {
+          "path": "fargate-express-demo/app_image",
+          "uniqueId": "app_image"
+        }
+      },
+      "args": {
+        "PLUGIN_DEFINITION": "{\"Gets\":[\"github.com/nitrictech/plugins-aws/fargate@087bac5e0f8fb6e367917b19357953682f3b697c\",\"github.com/nitrictech/plugins-aws/s3@087bac5e0f8fb6e367917b19357953682f3b697c\"],\"Pubsub\":null,\"Storage\":[{\"Alias\":\"storage_default\",\"Name\":\"default\",\"Import\":\"github.com/nitrictech/plugins-aws/s3\"}],\"Service\":{\"Alias\":\"svcPlugin\",\"Name\":\"default\",\"Import\":\"github.com/nitrictech/plugins-aws/fargate\"}}"
+      },
+      "build_context": ".",
+      "dockerfile": "Dockerfile",
+      "source": "github.com/nitrictech/suga//engines/terraform/modules/image?depth=1&ref=main",
+      "tag": "app"
+    },
+    "aws_lb": {
+      "//": {
+        "metadata": {
+          "path": "fargate-express-demo/aws_lb",
+          "uniqueId": "aws_lb"
+        }
+      },
+      "depends_on": [
+        "module.aws_vpc",
+        "module.aws_sg_http_egress",
+        "module.aws_sg_health_check_ingress",
+        "module.aws_sg_allow_cloudfront"
+      ],
+      "internal": true,
+      "name": "suga-lb",
+      "security_groups": [
+        "${module.aws_vpc.default_security_group_id}"
+      ],
+      "source": "github.com/raksiv/plugins-aws//loadbalancer/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c",
+      "subnets": "${module.aws_vpc.private_subnets}"
+    },
+    "aws_sg_allow_cloudfront": {
+      "//": {
+        "metadata": {
+          "path": "fargate-express-demo/aws_sg_allow_cloudfront",
+          "uniqueId": "aws_sg_allow_cloudfront"
+        }
+      },
+      "from_port": "${var.lb_listener_port}",
+      "prefix_list_names": [
+        "com.amazonaws.global.cloudfront.origin-facing"
+      ],
+      "protocol": "tcp",
+      "security_group_ids": [
+        "${module.aws_vpc.default_security_group_id}"
+      ],
+      "source": "github.com/raksiv/plugins-aws//sgrule/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c",
+      "to_port": "${var.lb_listener_port}",
+      "type": "ingress"
+    },
+    "aws_sg_health_check_ingress": {
+      "//": {
+        "metadata": {
+          "path": "fargate-express-demo/aws_sg_health_check_ingress",
+          "uniqueId": "aws_sg_health_check_ingress"
+        }
+      },
+      "from_port": "${var.container_port}",
+      "protocol": "tcp",
+      "security_group_ids": [
+        "${module.aws_vpc.default_security_group_id}"
+      ],
+      "self": true,
+      "source": "github.com/raksiv/plugins-aws//sgrule/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c",
+      "to_port": "${var.container_port}",
+      "type": "ingress"
+    },
+    "aws_sg_http_egress": {
+      "//": {
+        "metadata": {
+          "path": "fargate-express-demo/aws_sg_http_egress",
+          "uniqueId": "aws_sg_http_egress"
+        }
+      },
+      "cidr_blocks": [
+        "0.0.0.0/0"
+      ],
+      "from_port": "${var.aws_sg_http_egress_from_port}",
+      "protocol": -1,
+      "security_group_ids": [
+        "${module.aws_vpc.default_security_group_id}"
+      ],
+      "source": "github.com/raksiv/plugins-aws//sgrule/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c",
+      "to_port": "${var.aws_sg_http_egress_to_port}",
+      "type": "egress"
+    },
+    "aws_vpc": {
+      "//": {
+        "metadata": {
+          "path": "fargate-express-demo/aws_vpc",
+          "uniqueId": "aws_vpc"
+        }
+      },
+      "enable_nat_gateway": true,
+      "name": "suga-vpc",
+      "single_nat_gateway": "${var.aws_vpc_single_nat_gateway}",
+      "source": "github.com/raksiv/plugins-aws//vpc/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c"
+    },
+    "db": {
+      "//": {
+        "metadata": {
+          "path": "fargate-express-demo/db",
+          "uniqueId": "db"
+        }
+      },
+      "branch_id": "${var.db_neon_branch_id}",
+      "project_id": "${var.neon_project_id}",
+      "source": "github.com/raksiv/plugins-neon//database/module?ref=9bd00f8d351242dfba82500dec524097713291ca",
+      "suga": {
+        "env_var_key": "DATABASE_URL",
+        "name": "db",
+        "services": {
+          "app": {
+            "actions": [
+              "query"
+            ],
+            "identities": {
+              "aws:iam:role": "${module.app_iam-role_role.suga}"
+            }
+          }
+        },
+        "stack_id": "${random_string.stack_id.result}"
+      }
+    },
+    "ingress": {
+      "//": {
+        "metadata": {
+          "path": "fargate-express-demo/ingress",
+          "uniqueId": "ingress"
+        }
+      },
+      "default_cache_policy_id": "edc2bee4-f09e-434e-95c7-de9ba3304774",
+      "depends_on": [
+        "module.aws_lb",
+        "module.aws_vpc"
+      ],
+      "source": "github.com/raksiv/plugins-aws//cloudfront/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c",
+      "suga": {
+        "name": "ingress",
+        "origins": {
+          "app": {
+            "domain_name": "${module.app.suga.domain_name}",
+            "id": "${module.app.suga.id}",
+            "resources": "${module.app.suga.exports.resources}",
+            "routes": [
+              {
+                "base_path": "",
+                "path": "/"
+              }
+            ],
+            "type": "service"
+          },
+          "static_assets": {
+            "domain_name": "${module.static_assets.suga.domain_name}",
+            "id": "${module.static_assets.suga.id}",
+            "resources": "${module.static_assets.suga.exports.resources}",
+            "routes": [
+              {
+                "base_path": "",
+                "path": "/website/"
+              }
+            ],
+            "type": "bucket"
+          }
+        },
+        "stack_id": "${random_string.stack_id.result}"
+      }
+    },
+    "static_assets": {
+      "//": {
+        "metadata": {
+          "path": "fargate-express-demo/static_assets",
+          "uniqueId": "static_assets"
+        }
+      },
+      "source": "github.com/raksiv/plugins-aws//s3/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c",
+      "suga": {
+        "content_path": "/frontend",
+        "name": "static_assets",
+        "services": {
+        },
+        "stack_id": "${random_string.stack_id.result}"
+      }
+    }
+  },
+  "provider": {
+    "random": [
+      {
+      }
+    ]
+  },
+  "resource": {
+    "random_string": {
+      "stack_id": {
+        "//": {
+          "metadata": {
+            "path": "fargate-express-demo/stack_id",
+            "uniqueId": "stack_id"
+          }
+        },
+        "length": 8,
+        "lower": true,
+        "numeric": false,
+        "special": false,
+        "upper": false
+      }
+    }
+  },
+  "terraform": {
+    "required_providers": {
+      "random": {
+        "source": "hashicorp/random",
+        "version": "3.7.2"
+      }
+    }
+  },
+  "variable": {
+    "aws_sg_http_egress_from_port": {
+      "default": "0",
+      "description": "",
+      "nullable": false,
+      "type": "number"
+    },
+    "aws_sg_http_egress_to_port": {
+      "default": "0",
+      "description": "",
+      "nullable": false,
+      "type": "number"
+    },
+    "aws_vpc_single_nat_gateway": {
+      "default": "true",
+      "description": "",
+      "nullable": false,
+      "type": "bool"
+    },
+    "container_port": {
+      "default": "8080",
+      "description": "",
+      "nullable": false,
+      "type": "number"
+    },
+    "db_neon_branch_id": {
+      "default": null,
+      "description": "The ID of the Neon branch to use if using an existing branch",
+      "nullable": true,
+      "type": "string"
+    },
+    "lb_listener_port": {
+      "default": "80",
+      "description": "",
+      "nullable": false,
+      "type": "number"
+    },
+    "neon_project_id": {
+      "default": "bitter-salad-49326916",
+      "description": "",
+      "nullable": false,
+      "type": "string"
+    }
+  }
+}

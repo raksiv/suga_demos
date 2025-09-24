@@ -1,0 +1,30 @@
+targets:
+  - demo/aws-fargate-demo@14
+name: fargate-express-demo
+description: ECS Fargate demo with Express.js API and Auth services
+services:
+  app:
+    subtype: fargate
+    container:
+      docker:
+        dockerfile: Dockerfile
+        context: .
+    dev:
+      script: npm run dev
+buckets:
+  static_assets:
+    content_path: /frontend
+entrypoints:
+  ingress:
+    routes:
+      /:
+        name: app
+      /website/:
+        name: static_assets
+databases:
+  db:
+    subtype: default
+    access:
+      app:
+        - query
+    env_var_key: DATABASE_URL
