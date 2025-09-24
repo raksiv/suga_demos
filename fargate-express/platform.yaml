@@ -1,0 +1,177 @@
+{
+  "name": "rk-test",
+  "libraries":
+    {
+      "suga-aws": "suga/suga-aws@v0.0.3",
+      "suga-neon": "suga/suga-neon@v0.0.1",
+    },
+  "variables":
+    {
+      "neon_project_id":
+        {
+          "type": "string",
+          "description": "The ID of the Neon project to use",
+        },
+      "container_port":
+        {
+          "type": "number",
+          "description": "The port the container listens on",
+          "default": 8080,
+        },
+      "lb_listener_port":
+        {
+          "type": "number",
+          "description": "The port the load balancer listens on",
+          "default": 80,
+        },
+    },
+  "services":
+    {
+      "default":
+        {
+          "plugin": "suga-aws/lambda",
+          "identities": [{ "plugin": "suga-aws/iam-role" }],
+        },
+      "stateful":
+        {
+          "plugin": "suga-aws/fargate",
+          "depends_on": ["${infra.vpc}", "${infra.lb}"],
+          "identities": [{ "plugin": "suga-aws/iam-role" }],
+          "properties":
+            {
+              "container_port": "${var.container_port}",
+              "alb_arn": "${infra.lb.arn}",
+              "vpc_id": "${infra.vpc.vpc_id}",
+              "alb_security_group": "${infra.vpc.default_security_group_id}",
+              "subnets": "${infra.vpc.private_subnets}",
+              "security_groups": ["${infra.vpc.default_security_group_id}"],
+            },
+        },
+    },
+  "buckets": { "default": { "plugin": "suga-aws/s3-bucket" } },
+  "entrypoints":
+    {
+      "default":
+        {
+          "depends_on": ["${infra.vpc}", "${infra.lb}"],
+          "plugin": "suga-aws/cloudfront",
+          "properties":
+            {
+              "default_cache_policy_id": "edc2bee4-f09e-434e-95c7-de9ba3304774",
+            },
+        },
+    },
+  "databases":
+    {
+      "default":
+        {
+          "plugin": "suga-neon/neon-db",
+          "variables":
+            {
+              "neon_parent_branch_id":
+                {
+                  "type": "string",
+                  "description": "The ID of the Neon parent branch to use if creating a new branch",
+                  "default": null,
+                  "nullable": true,
+                },
+              "neon_branch_id":
+                {
+                  "type": "string",
+                  "description": "The ID of the Neon branch to use if using an existing branch",
+                  "default": null,
+                  "nullable": true,
+                },
+            },
+          "properties":
+            {
+              "project_id": "${var.neon_project_id}",
+              "branch_id": "${self.neon_branch_id}",
+              "parent_branch_id": "${self.neon_parent_branch_id}",
+            },
+        },
+    },
+  "infra":
+    {
+      "vpc":
+        {
+          "plugin": "suga-aws/vpc",
+          "variables":
+            {
+              "single_nat_gateway":
+                {
+                  "type": "bool",
+                  "default": true,
+                  "description": "Enable only a single NAT gateway in the VPC",
+                },
+            },
+          "properties":
+            {
+              "name": "suga-vpc",
+              "enable_nat_gateway": true,
+              "single_nat_gateway": "${self.single_nat_gateway}",
+            },
+        },
+      "lb":
+        {
+          "plugin": "suga-aws/loadbalancer",
+          "depends_on":
+            [
+              "${infra.vpc}",
+              "${infra.sg_http_egress}",
+              "${infra.sg_health_check_ingress}",
+              "${infra.sg_allow_cloudfront}",
+            ],
+          "properties":
+            {
+              "name": "suga-lb",
+              "security_groups": ["${infra.vpc.default_security_group_id}"],
+              "subnets": "${infra.vpc.private_subnets}",
+              "internal": true,
+            },
+        },
+      "sg_http_egress":
+        {
+          "plugin": "suga-aws/security-group-rule",
+          "depends_on": ["${infra.vpc}"],
+          "properties":
+            {
+              "security_group_ids": ["${infra.vpc.default_security_group_id}"],
+              "type": "egress",
+              "from_port": 0,
+              "to_port": 0,
+              "protocol": "-1",
+              "cidr_blocks": ["0.0.0.0/0"],
+            },
+        },
+      "sg_health_check_ingress":
+        {
+          "plugin": "suga-aws/security-group-rule",
+          "depends_on": ["${infra.vpc}"],
+          "properties":
+            {
+              "security_group_ids": ["${infra.vpc.default_security_group_id}"],
+              "type": "ingress",
+              "from_port": "${var.container_port}",
+              "to_port": "${var.container_port}",
+              "protocol": "tcp",
+              "self": true,
+            },
+        },
+      "sg_allow_cloudfront":
+        {
+          "plugin": "suga-aws/security-group-rule",
+          "depends_on": ["${infra.vpc}"],
+          "properties":
+            {
+              "security_group_ids": ["${infra.vpc.default_security_group_id}"],
+              "type": "ingress",
+              "from_port": "${var.lb_listener_port}",
+              "to_port": "${var.lb_listener_port}",
+              "protocol": "tcp",
+              "prefix_list_names":
+                ["com.amazonaws.global.cloudfront.origin-facing"],
+            },
+        },
+    },
+}

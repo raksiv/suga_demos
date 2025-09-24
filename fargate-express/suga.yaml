@@ -1,0 +1,31 @@
+targets:
+  - suga/rk-test@15
+  - file:./platform.yaml
+name: fargate-express-demo
+description: ECS Fargate demo with Express.js API and Auth services
+services:
+  app:
+    subtype: stateful
+    container:
+      docker:
+        dockerfile: Dockerfile
+        context: .
+    dev:
+      script: npm run dev
+buckets:
+  static_assets:
+    content_path: /frontend
+entrypoints:
+  ingress:
+    routes:
+      /:
+        name: app
+      /website/:
+        name: static_assets
+databases:
+  db:
+    subtype: default
+    access:
+      app:
+        - query
+    env_var_key: DATABASE_URL
