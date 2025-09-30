@@ -1,0 +1,16 @@
+{
+  "stacks": {
+    "lambda-fastapi-demo": {
+      "annotations": [
+      ],
+      "constructPath": "lambda-fastapi-demo",
+      "dependencies": [
+      ],
+      "name": "lambda-fastapi-demo",
+      "stackMetadataPath": "stacks/lambda-fastapi-demo/metadata.json",
+      "synthesizedStackPath": "stacks/lambda-fastapi-demo/cdk.tf.json",
+      "workingDirectory": "stacks/lambda-fastapi-demo"
+    }
+  },
+  "version": "0.20.12"
+}

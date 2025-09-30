@@ -1,0 +1,188 @@
+{
+  "//": {
+    "metadata": {
+      "backend": "nil_backend",
+      "stackName": "lambda-fastapi-demo",
+      "version": "0.20.12"
+    },
+    "outputs": {
+    }
+  },
+  "module": {
+    "api": {
+      "//": {
+        "metadata": {
+          "path": "lambda-fastapi-demo/api",
+          "uniqueId": "api"
+        }
+      },
+      "source": "github.com/raksiv/plugins-aws//lambda/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c",
+      "suga": {
+        "env": "${merge(try(module.static_assets.suga.exports.services.api.env, {}), try(module.db.suga.exports.services.api.env, {}), {})}",
+        "identities": {
+          "aws:iam:role": "${module.api_iam-role_role.suga}"
+        },
+        "image_id": "${module.api_image.image_id}",
+        "name": "api",
+        "schedules": {
+        },
+        "stack_id": "${random_string.stack_id.result}"
+      }
+    },
+    "api_iam-role_role": {
+      "//": {
+        "metadata": {
+          "path": "lambda-fastapi-demo/api_iam-role_role",
+          "uniqueId": "api_iam-role_role"
+        }
+      },
+      "source": "github.com/raksiv/plugins-aws//iamrole/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c",
+      "suga": {
+        "name": "api",
+        "stack_id": "${random_string.stack_id.result}"
+      }
+    },
+    "api_image": {
+      "//": {
+        "metadata": {
+          "path": "lambda-fastapi-demo/api_image",
+          "uniqueId": "api_image"
+        }
+      },
+      "args": {
+        "PLUGIN_DEFINITION": "{\"Gets\":[\"github.com/nitrictech/plugins-aws/lambda@087bac5e0f8fb6e367917b19357953682f3b697c\",\"github.com/nitrictech/plugins-aws/s3@087bac5e0f8fb6e367917b19357953682f3b697c\"],\"Pubsub\":null,\"Storage\":[{\"Alias\":\"storage_default\",\"Name\":\"default\",\"Import\":\"github.com/nitrictech/plugins-aws/s3\"}],\"Service\":{\"Alias\":\"svcPlugin\",\"Name\":\"default\",\"Import\":\"github.com/nitrictech/plugins-aws/lambda\"}}"
+      },
+      "build_context": ".",
+      "dockerfile": "Dockerfile",
+      "source": "github.com/nitrictech/suga//engines/terraform/modules/image?depth=1&ref=main",
+      "tag": "api"
+    },
+    "db": {
+      "//": {
+        "metadata": {
+          "path": "lambda-fastapi-demo/db",
+          "uniqueId": "db"
+        }
+      },
+      "branch_id": "${var.db_neon_branch_id}",
+      "project_id": "${var.neon_project_id}",
+      "source": "github.com/raksiv/plugins-neon//database/module?ref=9bd00f8d351242dfba82500dec524097713291ca",
+      "suga": {
+        "env_var_key": "DATABASE_URL",
+        "name": "db",
+        "services": {
+          "api": {
+            "actions": [
+              "query"
+            ],
+            "identities": {
+              "aws:iam:role": "${module.api_iam-role_role.suga}"
+            }
+          }
+        },
+        "stack_id": "${random_string.stack_id.result}"
+      }
+    },
+    "ingress": {
+      "//": {
+        "metadata": {
+          "path": "lambda-fastapi-demo/ingress",
+          "uniqueId": "ingress"
+        }
+      },
+      "default_cache_policy_id": "edc2bee4-f09e-434e-95c7-de9ba3304774",
+      "source": "github.com/raksiv/plugins-aws//cloudfront/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c",
+      "suga": {
+        "name": "ingress",
+        "origins": {
+          "api": {
+            "domain_name": "${module.api.suga.domain_name}",
+            "id": "${module.api.suga.id}",
+            "resources": "${module.api.suga.exports.resources}",
+            "routes": [
+              {
+                "base_path": "",
+                "path": "/"
+              }
+            ],
+            "type": "service"
+          },
+          "static_assets": {
+            "domain_name": "${module.static_assets.suga.domain_name}",
+            "id": "${module.static_assets.suga.id}",
+            "resources": "${module.static_assets.suga.exports.resources}",
+            "routes": [
+              {
+                "base_path": "",
+                "path": "/website/"
+              }
+            ],
+            "type": "bucket"
+          }
+        },
+        "stack_id": "${random_string.stack_id.result}"
+      }
+    },
+    "static_assets": {
+      "//": {
+        "metadata": {
+          "path": "lambda-fastapi-demo/static_assets",
+          "uniqueId": "static_assets"
+        }
+      },
+      "source": "github.com/raksiv/plugins-aws//s3/module?ref=087bac5e0f8fb6e367917b19357953682f3b697c",
+      "suga": {
+        "content_path": "/frontend",
+        "name": "static_assets",
+        "services": {
+        },
+        "stack_id": "${random_string.stack_id.result}"
+      }
+    }
+  },
+  "provider": {
+    "random": [
+      {
+      }
+    ]
+  },
+  "resource": {
+    "random_string": {
+      "stack_id": {
+        "//": {
+          "metadata": {
+            "path": "lambda-fastapi-demo/stack_id",
+            "uniqueId": "stack_id"
+          }
+        },
+        "length": 8,
+        "lower": true,
+        "numeric": false,
+        "special": false,
+        "upper": false
+      }
+    }
+  },
+  "terraform": {
+    "required_providers": {
+      "random": {
+        "source": "hashicorp/random",
+        "version": "3.7.2"
+      }
+    }
+  },
+  "variable": {
+    "db_neon_branch_id": {
+      "default": null,
+      "description": "The ID of the Neon branch to use if using an existing branch",
+      "nullable": true,
+      "type": "string"
+    },
+    "neon_project_id": {
+      "default": "bitter-salad-49326916",
+      "description": "",
+      "nullable": false,
+      "type": "string"
+    }
+  }
+}
