@@ -31,11 +31,14 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Final image, minimal runtime
 FROM base
 
+# Set working directory
+WORKDIR /app
+
 # Copy full app + .venv from builder
 COPY --from=builder /app /app
 
 # Activate virtualenv
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Launch app (adjust if your module path changes)
+# Launch app with hardcoded port (Lambda module sets PORT=8080 anyway)
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

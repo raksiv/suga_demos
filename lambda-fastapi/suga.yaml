@@ -1,9 +1,10 @@
 targets:
-  - demo/aws-fargate-demo@17
+  - demo/aws-fargate-demo@21
 name: lambda-fastapi-demo
 description: AWS Lambda demo with FastAPI for serverless API and Auth services
 services:
   api:
+    working_directory: .
     subtype: lambda
     container:
       docker:
@@ -23,6 +24,7 @@ entrypoints:
         name: static_assets
 databases:
   db:
+    subtype: default
     access:
       api:
         - query

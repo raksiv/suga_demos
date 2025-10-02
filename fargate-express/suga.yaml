@@ -1,10 +1,11 @@
 targets:
-  - demo/aws-fargate-demo@14
+  - demo/aws-fargate-demo@21
 name: fargate-express-demo
 description: ECS Fargate demo with Express.js API and Auth services
 services:
   app:
     subtype: fargate
+    working_directory: .
     container:
       docker:
         dockerfile: Dockerfile
