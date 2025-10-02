@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lambda FastAPI Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .hero { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: white; padding: 40px; border-radius: 10px; text-align: center; }
+        .api-demo { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #1e7e34; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>⚡ Lambda FastAPI Demo</h1>
+        <p>AWS Lambda deployment with FastAPI for serverless API and Auth services</p>
+    </div>
+
+    <div class="api-demo">
+        <h2>Authentication Demo</h2>
+        <div style="margin-bottom: 20px;">
+            <h3>Register New User</h3>
+            <input type="email" id="regEmail" placeholder="Email" style="margin: 5px; padding: 8px;">
+            <input type="text" id="regName" placeholder="Name" style="margin: 5px; padding: 8px;">
+            <input type="password" id="regPassword" placeholder="Password" style="margin: 5px; padding: 8px;">
+            <button onclick="registerUser()">Register</button>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <h3>Login</h3>
+            <input type="email" id="loginEmail" placeholder="Email" style="margin: 5px; padding: 8px;">
+            <input type="password" id="loginPassword" placeholder="Password" style="margin: 5px; padding: 8px;">
+            <button onclick="loginUser()">Login</button>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <h3>API Operations (Requires Login)</h3>
+            <button onclick="testAPI()">Test API Health</button>
+            <button onclick="testUsers()">Get All Users</button>
+            <input type="text" id="deleteUserId" placeholder="User ID to delete" style="margin: 5px; padding: 8px;">
+            <button onclick="deleteUser()">Delete User</button>
+        </div>
+
+        <pre id="output">Click a button to test the API...</pre>
+    </div>
+
+    <script>
+        let authToken = null;
+
+        async function registerUser() {
+            try {
+                const email = document.getElementById('regEmail').value;
+                const name = document.getElementById('regName').value;
+                const password = document.getElementById('regPassword').value;
+
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, name, password })
+                });
+
+                const data = await response.json();
+                document.getElementById('output').textContent = 'Registration: ' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('output').textContent = 'Registration Error: ' + error.message;
+            }
+        }
+
+        async function loginUser() {
+            try {
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                if (data.token) {
+                    authToken = data.token;
+                    document.getElementById('output').textContent = 'Login Success! Token: ' + data.token.substring(0, 50) + '...\n\nUser: ' + JSON.stringify(data.user, null, 2);
+                } else {
+                    document.getElementById('output').textContent = 'Login Failed: ' + JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                document.getElementById('output').textContent = 'Login Error: ' + error.message;
+            }
+        }
+
+        async function testAPI() {
+            try {
+                const response = await fetch('/');
+                const data = await response.json();
+                document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('output').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function testUsers() {
+            try {
+                if (!authToken) {
+                    document.getElementById('output').textContent = 'Error: Please login first to access user data';
+                    return;
+                }
+
+                const response = await fetch('/api/users', {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await response.json();
+                document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('output').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function deleteUser() {
+            try {
+                if (!authToken) {
+                    document.getElementById('output').textContent = 'Error: Please login first to delete users';
+                    return;
+                }
+
+                const userId = document.getElementById('deleteUserId').value;
+                if (!userId) {
+                    document.getElementById('output').textContent = 'Error: Please enter a User ID to delete';
+                    return;
+                }
+
+                const response = await fetch('/api/users/' + userId, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await response.json();
+                document.getElementById('output').textContent = 'Delete Result: ' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('output').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

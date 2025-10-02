@@ -1,0 +1,265 @@
+{
+  "revision":
+    {
+      "id": 52,
+      "platformId": 5,
+      "revision": 19,
+      "content":
+        {
+          "name": "aws-fargate-demo",
+          "libraries":
+            { "demo/aws-demo": "v0.0.4", "demo/neon-demo": "v0.0.2" },
+          "variables":
+            {
+              "container_port":
+                {
+                  "type": "number",
+                  "description": "",
+                  "default": "8080",
+                  "nullable": false,
+                },
+              "lb_listener_port":
+                {
+                  "type": "number",
+                  "description": "",
+                  "default": "80",
+                  "nullable": false,
+                },
+              "neon_project_id":
+                {
+                  "type": "string",
+                  "description": "",
+                  "default": "bitter-salad-49326916",
+                  "nullable": false,
+                },
+              "variable":
+                {
+                  "type": "string",
+                  "description": "",
+                  "default": null,
+                  "nullable": false,
+                },
+            },
+          "services":
+            {
+              "fargate":
+                {
+                  "source": { "library": "demo/aws-demo", "plugin": "fargate" },
+                  "properties":
+                    {
+                      "alb_arn": "${infra.aws_lb.arn}",
+                      "alb_security_group": "${infra.aws_vpc.default_security_group_id}",
+                      "container_port": "${var.container_port}",
+                      "security_groups":
+                        ["${infra.aws_vpc.default_security_group_id}"],
+                      "subnets": "${infra.aws_vpc.private_subnets}",
+                      "vpc_id": "${infra.aws_vpc.vpc_id}",
+                    },
+                  "depends_on": ["${infra.aws_lb}", "${infra.aws_vpc}"],
+                  "variables": null,
+                  "identities":
+                    [
+                      {
+                        "source":
+                          { "library": "demo/aws-demo", "plugin": "iam-role" },
+                        "properties": null,
+                        "depends_on": null,
+                        "variables": null,
+                      },
+                    ],
+                },
+              "lambda":
+                {
+                  "source": { "library": "demo/aws-demo", "plugin": "lambda" },
+                  "properties": null,
+                  "depends_on": [],
+                  "variables": null,
+                  "identities":
+                    [
+                      {
+                        "source":
+                          { "library": "demo/aws-demo", "plugin": "iam-role" },
+                        "properties": null,
+                        "depends_on": null,
+                        "variables": null,
+                      },
+                    ],
+                },
+            },
+          "buckets":
+            {
+              "default":
+                {
+                  "source":
+                    { "library": "demo/aws-demo", "plugin": "s3-bucket" },
+                  "properties": null,
+                  "depends_on": null,
+                  "variables": null,
+                },
+            },
+          "databases":
+            {
+              "default":
+                {
+                  "source":
+                    { "library": "demo/neon-demo", "plugin": "database" },
+                  "properties":
+                    {
+                      "branch_id": "${self.neon_branch_id}",
+                      "project_id": "${var.neon_project_id}",
+                    },
+                  "depends_on": [],
+                  "variables":
+                    {
+                      "neon_branch_id":
+                        {
+                          "type": "string",
+                          "description": "The ID of the Neon branch to use if using an existing branch",
+                          "default": null,
+                          "nullable": true,
+                        },
+                    },
+                },
+            },
+          "entrypoints":
+            {
+              "default":
+                {
+                  "source":
+                    { "library": "demo/aws-demo", "plugin": "cloudfront" },
+                  "properties":
+                    {
+                      "default_cache_policy_id": "edc2bee4-f09e-434e-95c7-de9ba3304774",
+                    },
+                  "depends_on": [],
+                  "variables": null,
+                },
+            },
+          "infra":
+            {
+              "aws_lb":
+                {
+                  "source":
+                    { "library": "demo/aws-demo", "plugin": "loadbalancer" },
+                  "properties":
+                    {
+                      "internal": true,
+                      "name": "suga-lb",
+                      "security_groups":
+                        ["${infra.aws_vpc.default_security_group_id}"],
+                      "subnets": "${infra.aws_vpc.private_subnets}",
+                    },
+                  "depends_on":
+                    [
+                      "${infra.aws_vpc}",
+                      "${infra.aws_sg_http_egress}",
+                      "${infra.aws_sg_health_check_ingress}",
+                      "${infra.aws_sg_allow_cloudfront}",
+                    ],
+                  "variables": null,
+                },
+              "aws_sg_allow_cloudfront":
+                {
+                  "source":
+                    {
+                      "library": "demo/aws-demo",
+                      "plugin": "security-group-rule",
+                    },
+                  "properties":
+                    {
+                      "from_port": "${var.lb_listener_port}",
+                      "prefix_list_names":
+                        ["com.amazonaws.global.cloudfront.origin-facing"],
+                      "protocol": "tcp",
+                      "security_group_ids":
+                        ["${infra.aws_vpc.default_security_group_id}"],
+                      "to_port": "${var.lb_listener_port}",
+                      "type": "ingress",
+                    },
+                  "depends_on": ["${infra.aws_vpc}"],
+                  "variables": null,
+                },
+              "aws_sg_health_check_ingress":
+                {
+                  "source":
+                    {
+                      "library": "demo/aws-demo",
+                      "plugin": "security-group-rule",
+                    },
+                  "properties":
+                    {
+                      "from_port": "${var.container_port}",
+                      "protocol": "tcp",
+                      "security_group_ids":
+                        ["${infra.aws_vpc.default_security_group_id}"],
+                      "self": true,
+                      "to_port": "${var.container_port}",
+                      "type": "ingress",
+                    },
+                  "depends_on": ["${infra.aws_vpc}"],
+                  "variables": null,
+                },
+              "aws_sg_http_egress":
+                {
+                  "source":
+                    {
+                      "library": "demo/aws-demo",
+                      "plugin": "security-group-rule",
+                    },
+                  "properties":
+                    {
+                      "cidr_blocks": ["0.0.0.0/0"],
+                      "from_port": "${self.from_port}",
+                      "protocol": -1,
+                      "security_group_ids":
+                        ["${infra.aws_vpc.default_security_group_id}"],
+                      "to_port": "${self.to_port}",
+                      "type": "egress",
+                    },
+                  "depends_on": ["${infra.aws_vpc}"],
+                  "variables":
+                    {
+                      "from_port":
+                        {
+                          "type": "number",
+                          "description": "",
+                          "default": "0",
+                          "nullable": false,
+                        },
+                      "to_port":
+                        {
+                          "type": "number",
+                          "description": "",
+                          "default": "0",
+                          "nullable": false,
+                        },
+                    },
+                },
+              "aws_vpc":
+                {
+                  "source": { "library": "demo/aws-demo", "plugin": "vpc" },
+                  "properties":
+                    {
+                      "enable_nat_gateway": true,
+                      "name": "suga-vpc",
+                      "single_nat_gateway": "${self.single_nat_gateway}",
+                    },
+                  "depends_on": [],
+                  "variables":
+                    {
+                      "single_nat_gateway":
+                        {
+                          "type": "bool",
+                          "description": "",
+                          "default": "true",
+                          "nullable": false,
+                        },
+                    },
+                },
+            },
+        },
+      "createdAt": "2025-10-01T19:49:39.525117Z",
+      "updatedAt": "2025-10-01T19:49:39.525117Z",
+      "message": "..",
+    },
+}

@@ -1,17 +1,17 @@
 targets:
   - demo/aws-fargate-demo@21
-name: fargate-express-demo
-description: ECS Fargate demo with Express.js API and Auth services
+name: lambda-fastapi-demo
+description: AWS Lambda demo with FastAPI for serverless API and Auth services
 services:
-  app:
-    subtype: fargate
+  api:
     working_directory: .
+    subtype: lambda
     container:
       docker:
         dockerfile: Dockerfile
         context: .
     dev:
-      script: npm run dev
+      script: uv run uvicorn main:app --host 0.0.0.0 --port $PORT
 buckets:
   static_assets:
     content_path: /frontend
@@ -19,13 +19,13 @@ entrypoints:
   ingress:
     routes:
       /:
-        name: app
+        name: api
       /website/:
         name: static_assets
 databases:
   db:
     subtype: default
     access:
-      app:
+      api:
         - query
     env_var_key: DATABASE_URL
